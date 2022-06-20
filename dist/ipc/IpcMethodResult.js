@@ -5,6 +5,12 @@ class IpcMethodResult {
     constructor(results) {
         this.results = results;
     }
+    get result() {
+        if (this.isValid) {
+            return this.firstResult;
+        }
+        throw new Error(this.firstError);
+    }
     get isValid() {
         return !!this.firstResult;
     }

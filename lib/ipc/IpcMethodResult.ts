@@ -6,6 +6,13 @@ export class IpcMethodResult<T> {
     public readonly results: {result?: T; error?: any}[],
   ) {}
 
+  public get result(): T {
+    if (this.isValid) {
+      return this.firstResult
+    }
+    throw new Error(this.firstError)
+  }
+
   public get isValid(): boolean {
     return !!this.firstResult
   }

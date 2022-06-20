@@ -7,6 +7,7 @@ export declare class IpcMethodResult<T> {
         result?: T;
         error?: any;
     }[]);
+    get result(): T;
     get isValid(): boolean;
     get firstResult(): T | undefined;
     get allResults(): T[];
