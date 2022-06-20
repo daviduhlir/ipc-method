@@ -1,6 +1,8 @@
 /// <reference types="node" />
 import * as cluster from 'cluster';
 import { IpcMethodResult } from './IpcMethodResult';
+export declare type ArgumentTypes<T> = T extends (...args: infer U) => infer R ? U : never;
+export declare type ThenArg<T> = T extends PromiseLike<infer U> ? U : T;
 export interface IpcInternalMessage {
     TOPICS: string[];
     ACTION: string;
@@ -25,6 +27,9 @@ export declare class IpcMethodHandler {
     });
     callWithResult<T>(action: string, ...params: any[]): Promise<IpcMethodResult<T>>;
     call(action: string, ...params: any[]): IpcInternalMessage;
+    as<T>(): {
+        [K in keyof T]: (...a: ArgumentTypes<T[K]>) => Promise<IpcMethodResult<ThenArg<(ReturnType<T[K] extends (...args: any) => Promise<any> ? (T[K]) : never>)>>>;
+    };
     protected get processes(): (NodeJS.Process | cluster.Worker)[];
     protected reattachMessageHandlers(): void;
     protected handleIncomingMessage: (message: IpcInternalMessage) => Promise<void>;

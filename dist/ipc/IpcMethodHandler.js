@@ -92,6 +92,17 @@ class IpcMethodHandler {
         this.processes.forEach(p => p.send(message));
         return message;
     }
+    as() {
+        return new Proxy(this, {
+            get: (target, propKey, receiver) => async (...args) => {
+                const result = await this.callWithResult(propKey.toString(), args);
+                if (result.isValid) {
+                    return result.firstResult;
+                }
+                throw new Error(result.firstError || 'Unknown error');
+            },
+        });
+    }
     get processes() {
         if (cluster.isWorker) {
             return [process];

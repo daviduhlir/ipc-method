@@ -2,6 +2,9 @@ import * as cluster from 'cluster'
 import { arrayCompare, randomHash } from '../utils'
 import { IpcMethodResult } from './IpcMethodResult'
 
+export type ArgumentTypes<T> = T extends (... args: infer U ) => infer R ? U: never;
+export type ThenArg<T> = T extends PromiseLike<infer U> ? U : T
+
 export interface IpcInternalMessage {
   TOPICS: string[]
   ACTION: string
@@ -88,6 +91,28 @@ export class IpcMethodHandler {
     }
     this.processes.forEach(p => p.send(message))
     return message
+  }
+
+  /**
+   * Get proxy object, where every each property you get will be returned
+   * as method call to receiver layer. Use template to keep typeings of your receiver on it.
+   */
+  public as<T>(): {
+    [K in keyof T]: (...a: ArgumentTypes<T[K]>) => Promise<
+      IpcMethodResult<
+        ThenArg<(ReturnType<T[K] extends (...args: any) => Promise<any> ? (T[K]) : never>)>
+      >
+    >
+  } {
+    return new Proxy(this as any, {
+      get: (target, propKey, receiver) => async (...args) => {
+        const result = await this.callWithResult(propKey.toString(), args)
+        if (result.isValid) {
+          return result.firstResult
+        }
+        throw new Error(result.firstError || 'Unknown error')
+      },
+    })
   }
 
   /*******************************
