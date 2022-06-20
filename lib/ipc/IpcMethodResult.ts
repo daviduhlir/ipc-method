@@ -14,7 +14,7 @@ export class IpcMethodResult<T> {
   }
 
   public get isValid(): boolean {
-    return !!this.firstResult
+    return !!this.results.find(i => !i?.error)
   }
 
   public get firstResult(): T | undefined {
