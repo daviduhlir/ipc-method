@@ -1,0 +1,29 @@
+{
+  "name": "@david.uhlir/ipc-method",
+  "version": "1.0.0",
+  "description": "IPC Method calling between forks and master",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "rimraf ./dist && tsc",
+    "prettier-format": "prettier --config .prettierrc.json 'lib/**/*.ts' --write"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/daviduhlir/ipc-method.git"
+  },
+  "keywords": [
+    "server",
+    "node",
+    "ipc",
+    "promises"
+  ],
+  "author": "David Uhlíř",
+  "license": "ISC",
+  "devDependencies": {
+    "@types/node": "^13.11.1",
+    "prettier": "^2.6.2",
+    "rimraf": "^2.6.2",
+    "typescript": "^3.8.3"
+  }
+}
