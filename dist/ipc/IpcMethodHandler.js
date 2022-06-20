@@ -97,7 +97,7 @@ class IpcMethodHandler extends EventEmitter {
     as() {
         return new Proxy(this, {
             get: (target, propKey, receiver) => async (...args) => {
-                const result = await this.callWithResult(propKey.toString(), args);
+                const result = await this.callWithResult(propKey.toString(), ...args);
                 if (result.isValid) {
                     return result.firstResult;
                 }
