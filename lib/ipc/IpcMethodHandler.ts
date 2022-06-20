@@ -1,9 +1,17 @@
 import * as cluster from 'cluster'
+import EventEmitter = require('events');
 import { arrayCompare, randomHash } from '../utils'
 import { IpcMethodResult } from './IpcMethodResult'
 
 export type ArgumentTypes<T> = T extends (... args: infer U ) => infer R ? U: never;
 export type ThenArg<T> = T extends PromiseLike<infer U> ? U : T
+export type AsObject<T> = {
+  [K in keyof T]: (...a: ArgumentTypes<T[K]>) => Promise<
+    IpcMethodResult<
+      ThenArg<(ReturnType<T[K] extends (...args: any) => Promise<any> ? (T[K]) : never>)>
+    >
+  >
+}
 
 export interface IpcInternalMessage {
   TOPICS: string[]
@@ -21,11 +29,12 @@ export const MESSAGE_RESULT = {
   ERROR: 'ERROR',
 }
 
-export class IpcMethodHandler {
+export class IpcMethodHandler extends EventEmitter {
   constructor(
     public readonly topics: string[],
     public readonly receivers: {[name: string]: (...params: any[]) => Promise<any>} = {}
   ) {
+    super()
     if (cluster.isMaster) {
       this.reattachMessageHandlers()
       cluster?.on('fork',() => this.reattachMessageHandlers())
@@ -97,13 +106,7 @@ export class IpcMethodHandler {
    * Get proxy object, where every each property you get will be returned
    * as method call to receiver layer. Use template to keep typeings of your receiver on it.
    */
-  public as<T>(): {
-    [K in keyof T]: (...a: ArgumentTypes<T[K]>) => Promise<
-      IpcMethodResult<
-        ThenArg<(ReturnType<T[K] extends (...args: any) => Promise<any> ? (T[K]) : never>)>
-      >
-    >
-  } {
+  public as<T>(): AsObject<T> {
     return new Proxy(this as any, {
       get: (target, propKey, receiver) => async (...args) => {
         const result = await this.callWithResult(propKey.toString(), args)
