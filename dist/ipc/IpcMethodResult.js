@@ -12,7 +12,7 @@ class IpcMethodResult {
         throw new Error(this.firstError);
     }
     get isValid() {
-        return !!this.firstResult;
+        return !!this.results.find(i => !i?.error);
     }
     get firstResult() {
         return this.results.find(i => !i?.error)?.result;
