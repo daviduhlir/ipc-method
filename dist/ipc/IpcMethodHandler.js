@@ -2,14 +2,16 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.IpcMethodHandler = exports.MESSAGE_RESULT = void 0;
 const cluster = require("cluster");
+const EventEmitter = require("events");
 const utils_1 = require("../utils");
 const IpcMethodResult_1 = require("./IpcMethodResult");
 exports.MESSAGE_RESULT = {
     SUCCESS: 'SUCCESS',
     ERROR: 'ERROR',
 };
-class IpcMethodHandler {
+class IpcMethodHandler extends EventEmitter {
     constructor(topics, receivers = {}) {
+        super();
         this.topics = topics;
         this.receivers = receivers;
         this.handleIncomingMessage = async (message) => {
