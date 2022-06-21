@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.IpcMethodHandler = exports.MESSAGE_RESULT = void 0;
+exports.IpcMethodHandler = exports.INTERNAL_EVENTS = exports.MESSAGE_RESULT = void 0;
 const cluster = require("cluster");
 const EventEmitter = require("events");
 const utils_1 = require("../utils");
@@ -8,6 +8,9 @@ const IpcMethodResult_1 = require("./IpcMethodResult");
 exports.MESSAGE_RESULT = {
     SUCCESS: 'SUCCESS',
     ERROR: 'ERROR',
+};
+exports.INTERNAL_EVENTS = {
+    REJECT_ALL: 'REJECT_ALL',
 };
 class IpcMethodHandler extends EventEmitter {
     constructor(topics, receivers = {}) {
@@ -55,29 +58,30 @@ class IpcMethodHandler extends EventEmitter {
     async callWithResult(action, ...params) {
         let outgoingMessage = null;
         const results = Promise.all(this.processes.map(p => new Promise((resolve, reject) => {
+            const done = (result) => {
+                p.removeListener('message', messageHandler);
+                p.removeListener('exit', rejectHandler);
+                this.removeListener(exports.INTERNAL_EVENTS.REJECT_ALL, rejectHandler);
+                resolve(result);
+            };
             const messageHandler = (message) => {
                 if (typeof message === 'object' &&
                     message.MESSAGE_ID === outgoingMessage.MESSAGE_ID &&
                     message.RESULT &&
                     message.ACTION === action &&
                     utils_1.arrayCompare(message.TOPICS, this.topics)) {
-                    p.removeListener('message', messageHandler);
-                    p.removeListener('exit', rejectHandler);
                     if (message.RESULT === exports.MESSAGE_RESULT.SUCCESS) {
-                        resolve({ result: message.value });
+                        done({ result: message.value });
                     }
                     else {
-                        resolve({ error: message.error });
+                        done({ error: message.error });
                     }
                 }
             };
-            const rejectHandler = () => {
-                p.removeListener('message', messageHandler);
-                p.removeListener('exit', rejectHandler);
-                resolve({ error: new Error(`Process died during call.`) });
-            };
+            const rejectHandler = () => done({ error: new Error(`Call was rejected, process probably died during call, or rejection was called.`) });
             p.addListener('message', messageHandler);
             p.addListener('exit', rejectHandler);
+            this.addListener(exports.INTERNAL_EVENTS.REJECT_ALL, rejectHandler);
         })));
         outgoingMessage = this.call(action, ...params);
         return new IpcMethodResult_1.IpcMethodResult(await results);
@@ -104,6 +108,9 @@ class IpcMethodHandler extends EventEmitter {
                 throw new Error(result.firstError || 'Unknown error');
             },
         });
+    }
+    rejectAllCalls() {
+        this.emit(exports.INTERNAL_EVENTS.REJECT_ALL);
     }
     get processes() {
         if (cluster.isWorker) {

@@ -21,6 +21,9 @@ export declare const MESSAGE_RESULT: {
     SUCCESS: string;
     ERROR: string;
 };
+export declare const INTERNAL_EVENTS: {
+    REJECT_ALL: string;
+};
 export declare class IpcMethodHandler extends EventEmitter {
     readonly topics: string[];
     readonly receivers: {
@@ -32,6 +35,7 @@ export declare class IpcMethodHandler extends EventEmitter {
     callWithResult<T>(action: string, ...params: any[]): Promise<IpcMethodResult<T>>;
     call(action: string, ...params: any[]): IpcInternalMessage;
     as<T>(): AsObject<T>;
+    rejectAllCalls(): void;
     protected get processes(): (NodeJS.Process | cluster.Worker)[];
     protected reattachMessageHandlers(): void;
     protected handleIncomingMessage: (message: IpcInternalMessage) => Promise<void>;

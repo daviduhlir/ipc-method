@@ -29,6 +29,10 @@ export const MESSAGE_RESULT = {
   ERROR: 'ERROR',
 }
 
+export const INTERNAL_EVENTS = {
+  REJECT_ALL: 'REJECT_ALL',
+}
+
 export class IpcMethodHandler extends EventEmitter {
   constructor(
     public readonly topics: string[],
@@ -52,6 +56,13 @@ export class IpcMethodHandler extends EventEmitter {
 
     const results = Promise.all(
       this.processes.map(p => new Promise((resolve, reject) => {
+        const done = (result) => {
+          p.removeListener('message', messageHandler)
+          p.removeListener('exit', rejectHandler)
+          this.removeListener(INTERNAL_EVENTS.REJECT_ALL, rejectHandler)
+          resolve(result)
+        }
+
         const messageHandler = (message: IpcInternalMessage) => {
           if (
             typeof message === 'object' &&
@@ -60,25 +71,19 @@ export class IpcMethodHandler extends EventEmitter {
             message.ACTION === action &&
             arrayCompare(message.TOPICS, this.topics)
           ) {
-            p.removeListener('message', messageHandler)
-            p.removeListener('exit', rejectHandler)
-
             if (message.RESULT === MESSAGE_RESULT.SUCCESS) {
-              resolve({ result: message.value })
+              done({ result: message.value })
             } else {
-              resolve({ error: message.error })
+              done({ error: message.error })
             }
           }
         }
 
-        const rejectHandler = () => {
-          p.removeListener('message', messageHandler)
-          p.removeListener('exit', rejectHandler)
-          resolve({ error: new Error(`Process died during call.`) })
-        }
+        const rejectHandler = () => done({ error: new Error(`Call was rejected, process probably died during call, or rejection was called.`) })
 
         p.addListener('message', messageHandler)
         p.addListener('exit', rejectHandler)
+        this.addListener(INTERNAL_EVENTS.REJECT_ALL, rejectHandler)
       }))
     )
     outgoingMessage = this.call(action, ...params)
@@ -116,6 +121,13 @@ export class IpcMethodHandler extends EventEmitter {
         throw new Error(result.firstError || 'Unknown error')
       },
     })
+  }
+
+  /**
+   * Reject all waiting calls - it's usefull when process is changed.
+   */
+  public rejectAllCalls() {
+    this.emit(INTERNAL_EVENTS.REJECT_ALL)
   }
 
   /*******************************
