@@ -75,7 +75,7 @@ class IpcMethodHandler extends events_1.EventEmitter {
             const workerId = (p instanceof cluster.Worker) ? p.id : 'master';
             this.waitedResponses.push({
                 resolve: (message) => {
-                    this.waitedResponses = this.waitedResponses.filter(i => i.messageId !== messageId);
+                    this.waitedResponses = this.waitedResponses.filter(i => !(i.messageId === messageId && i.workerId === workerId));
                     if (message.RESULT === exports.MESSAGE_RESULT.SUCCESS) {
                         resolve({ result: message.value });
                     }
@@ -84,7 +84,7 @@ class IpcMethodHandler extends events_1.EventEmitter {
                     }
                 },
                 reject: () => {
-                    this.waitedResponses = this.waitedResponses.filter(i => i.messageId !== messageId);
+                    this.waitedResponses = this.waitedResponses.filter(i => !(i.messageId === messageId && i.workerId === workerId));
                     resolve({ error: new Error(`Call was rejected, process probably died during call, or rejection was called.`) });
                 },
                 messageId,

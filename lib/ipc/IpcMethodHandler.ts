@@ -65,7 +65,7 @@ export class IpcMethodHandler extends EventEmitter {
 
         this.waitedResponses.push({
           resolve: (message: IpcInternalMessage) => {
-            this.waitedResponses = this.waitedResponses.filter(i => i.messageId !== messageId)
+            this.waitedResponses = this.waitedResponses.filter(i => !(i.messageId === messageId && i.workerId === workerId))
             if (message.RESULT === MESSAGE_RESULT.SUCCESS) {
               resolve({ result: message.value })
             } else {
@@ -73,7 +73,7 @@ export class IpcMethodHandler extends EventEmitter {
             }
           },
           reject: () => {
-            this.waitedResponses = this.waitedResponses.filter(i => i.messageId !== messageId)
+            this.waitedResponses = this.waitedResponses.filter(i => !(i.messageId === messageId && i.workerId === workerId))
             resolve({ error: new Error(`Call was rejected, process probably died during call, or rejection was called.`) })
           },
           messageId,
