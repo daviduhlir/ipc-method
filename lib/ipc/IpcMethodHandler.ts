@@ -64,7 +64,7 @@ export class IpcMethodHandler extends EventEmitter {
    */
   public call(action: string, ...params: any[]): IpcInternalMessage {
     const messageId = randomHash()
-    return this.sendCall(action, messageId, ...params)
+    return this.sendCall(action, this.processes, messageId, ...params)
   }
 
   /**
@@ -99,7 +99,7 @@ export class IpcMethodHandler extends EventEmitter {
   /**
    * Sends call message
    */
-  protected sendCall(action: string, messageId: string, ...params: any[]): IpcInternalMessage {
+  protected sendCall(action: string, targetProcesses: (NodeJS.Process | cluster.Worker)[], messageId: string, ...params: any[]): IpcInternalMessage {
     const message = {
       TOPICS: this.topics,
       ACTION: action,
@@ -107,7 +107,7 @@ export class IpcMethodHandler extends EventEmitter {
       MESSAGE_ID: messageId,
       WORKER: cluster.isMaster ? 'master' : cluster.worker?.id,
     }
-    this.processes.forEach(p => p.send(message))
+    targetProcesses.forEach(p => p.send(message))
     return message
   }
 
@@ -141,7 +141,7 @@ export class IpcMethodHandler extends EventEmitter {
 
       }))
     )
-    this.sendCall(action, messageId, ...params)
+    this.sendCall(action, targetProcesses, messageId, ...params)
     return new IpcMethodResult(await results)
   }
 

@@ -74,7 +74,7 @@ class IpcMethodHandler extends events_1.EventEmitter {
     }
     call(action, ...params) {
         const messageId = utils_1.randomHash();
-        return this.sendCall(action, messageId, ...params);
+        return this.sendCall(action, this.processes, messageId, ...params);
     }
     as(targetProcesses) {
         return new Proxy(this, {
@@ -90,7 +90,7 @@ class IpcMethodHandler extends events_1.EventEmitter {
     rejectAllCalls() {
         this.waitedResponses.forEach(item => item.reject('MANUAL_REJECTED_ALL'));
     }
-    sendCall(action, messageId, ...params) {
+    sendCall(action, targetProcesses, messageId, ...params) {
         const message = {
             TOPICS: this.topics,
             ACTION: action,
@@ -98,7 +98,7 @@ class IpcMethodHandler extends events_1.EventEmitter {
             MESSAGE_ID: messageId,
             WORKER: cluster.isMaster ? 'master' : cluster.worker?.id,
         };
-        this.processes.forEach(p => p.send(message));
+        targetProcesses.forEach(p => p.send(message));
         return message;
     }
     async sendCallWithResult(action, targetProcesses, ...params) {
@@ -123,7 +123,7 @@ class IpcMethodHandler extends events_1.EventEmitter {
                 workerId,
             });
         })));
-        this.sendCall(action, messageId, ...params);
+        this.sendCall(action, targetProcesses, messageId, ...params);
         return new IpcMethodResult_1.IpcMethodResult(await results);
     }
     get processes() {

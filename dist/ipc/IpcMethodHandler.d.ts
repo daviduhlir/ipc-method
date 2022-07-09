@@ -40,7 +40,7 @@ export declare class IpcMethodHandler extends EventEmitter {
     call(action: string, ...params: any[]): IpcInternalMessage;
     as<T>(targetProcesses?: (NodeJS.Process | cluster.Worker)[]): AsObject<T>;
     rejectAllCalls(): void;
-    protected sendCall(action: string, messageId: string, ...params: any[]): IpcInternalMessage;
+    protected sendCall(action: string, targetProcesses: (NodeJS.Process | cluster.Worker)[], messageId: string, ...params: any[]): IpcInternalMessage;
     protected sendCallWithResult<T>(action: string, targetProcesses: (NodeJS.Process | cluster.Worker)[], ...params: any[]): Promise<IpcMethodResult<T>>;
     protected get processes(): (NodeJS.Process | cluster.Worker)[];
     protected handleWorkerExit: (worker: cluster.Worker) => void;
