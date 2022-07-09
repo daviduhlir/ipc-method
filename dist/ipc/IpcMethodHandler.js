@@ -23,7 +23,7 @@ class IpcMethodHandler extends events_1.EventEmitter {
             }
         };
         this.handleIncomingMessage = async (message, workerId = 'master') => {
-            if (typeof message === 'object' && message.ACTION && utils_1.arrayCompare(message.TOPICS, this.topics) && message.WORKER) {
+            if (typeof message === 'object' && message.ACTION && (0, utils_1.arrayCompare)(message.TOPICS, this.topics) && message.WORKER) {
                 if (!message.RESULT) {
                     let value = null;
                     let error = null;
@@ -73,7 +73,7 @@ class IpcMethodHandler extends events_1.EventEmitter {
         return this.sendCallWithResult(action, this.processes, ...params);
     }
     call(action, ...params) {
-        const messageId = utils_1.randomHash();
+        const messageId = (0, utils_1.randomHash)();
         return this.sendCall(action, this.processes, messageId, ...params);
     }
     as(targetProcesses) {
@@ -102,7 +102,7 @@ class IpcMethodHandler extends events_1.EventEmitter {
         return message;
     }
     async sendCallWithResult(action, targetProcesses, ...params) {
-        const messageId = utils_1.randomHash();
+        const messageId = (0, utils_1.randomHash)();
         const results = Promise.all(targetProcesses.map(p => new Promise((resolve, reject) => {
             const workerId = (p instanceof cluster.Worker) ? p.id : 'master';
             this.waitedResponses.push({

@@ -10,7 +10,7 @@ function randomHash() {
 }
 exports.randomHash = randomHash;
 function hash(string) {
-    return crypto_1.createHash('sha256').update(string).digest('hex');
+    return (0, crypto_1.createHash)('sha256').update(string).digest('hex');
 }
 exports.hash = hash;
 function arrayCompare(array1, array2) {

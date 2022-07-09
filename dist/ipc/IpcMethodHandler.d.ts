@@ -1,4 +1,6 @@
 /// <reference types="node" />
+/// <reference types="node" />
+/// <reference types="node" />
 import * as cluster from 'cluster';
 import { EventEmitter } from 'events';
 import { IpcMethodResult } from './IpcMethodResult';
