@@ -1,6 +1,6 @@
 {
   "name": "@david.uhlir/ipc-method",
-  "version": "1.0.11",
+  "version": "1.0.12",
   "description": "IPC Method calling between forks and master",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",

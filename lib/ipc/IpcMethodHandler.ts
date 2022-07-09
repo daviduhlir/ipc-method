@@ -56,34 +56,7 @@ export class IpcMethodHandler extends EventEmitter {
    * Send message and wait for results
    */
   public async callWithResult<T>(action: string, ...params: any[]): Promise<IpcMethodResult<T>> {
-    const messageId = randomHash()
-
-    const results = Promise.all(
-      this.processes.map(p => new Promise((resolve, reject) => {
-
-        const workerId = (p instanceof cluster.Worker) ? p.id : 'master'
-
-        this.waitedResponses.push({
-          resolve: (message: IpcInternalMessage) => {
-            this.waitedResponses = this.waitedResponses.filter(i => !(i.messageId === messageId && i.workerId === workerId))
-            if (message.RESULT === MESSAGE_RESULT.SUCCESS) {
-              resolve({ result: message.value })
-            } else {
-              resolve({ error: message.error })
-            }
-          },
-          reject: () => {
-            this.waitedResponses = this.waitedResponses.filter(i => !(i.messageId === messageId && i.workerId === workerId))
-            resolve({ error: new Error(`Call was rejected, process probably died during call, or rejection was called.`) })
-          },
-          messageId,
-          workerId,
-        })
-
-      }))
-    )
-    this.sendCall(action, messageId, ...params)
-    return new IpcMethodResult(await results)
+    return this.sendCallWithResult(action, this.processes, ...params)
   }
 
   /**
@@ -98,10 +71,10 @@ export class IpcMethodHandler extends EventEmitter {
    * Get proxy object, where every each property you get will be returned
    * as method call to receiver layer. Use template to keep typeings of your receiver on it.
    */
-  public as<T>(): AsObject<T> {
+  public as<T>(targetProcesses?: (NodeJS.Process | cluster.Worker)[]): AsObject<T> {
     return new Proxy(this as any, {
       get: (target, propKey, receiver) => async (...args) => {
-        const result = await this.callWithResult(propKey.toString(), ...args)
+        const result = await this.sendCallWithResult(propKey.toString(), targetProcesses ? targetProcesses : this.processes, ...args)
         if (result.isValid) {
           return result.firstResult
         }
@@ -136,6 +109,40 @@ export class IpcMethodHandler extends EventEmitter {
     }
     this.processes.forEach(p => p.send(message))
     return message
+  }
+
+ /**
+  * Send message and wait for results
+  */
+  protected async sendCallWithResult<T>(action: string, targetProcesses: (NodeJS.Process | cluster.Worker)[], ...params: any[]): Promise<IpcMethodResult<T>> {
+    const messageId = randomHash()
+
+    const results = Promise.all(
+      targetProcesses.map(p => new Promise((resolve, reject) => {
+
+        const workerId = (p instanceof cluster.Worker) ? p.id : 'master'
+
+        this.waitedResponses.push({
+          resolve: (message: IpcInternalMessage) => {
+            this.waitedResponses = this.waitedResponses.filter(i => !(i.messageId === messageId && i.workerId === workerId))
+            if (message.RESULT === MESSAGE_RESULT.SUCCESS) {
+              resolve({ result: message.value })
+            } else {
+              resolve({ error: message.error })
+            }
+          },
+          reject: () => {
+            this.waitedResponses = this.waitedResponses.filter(i => !(i.messageId === messageId && i.workerId === workerId))
+            resolve({ error: new Error(`Call was rejected, process probably died during call, or rejection was called.`) })
+          },
+          messageId,
+          workerId,
+        })
+
+      }))
+    )
+    this.sendCall(action, messageId, ...params)
+    return new IpcMethodResult(await results)
   }
 
   /**

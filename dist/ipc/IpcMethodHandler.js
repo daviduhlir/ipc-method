@@ -62,16 +62,48 @@ class IpcMethodHandler extends events_1.EventEmitter {
             }
         };
         if (cluster.isMaster) {
-            cluster?.on('exit', this.handleWorkerExit);
-            cluster?.on('message', this.handleClusterIncomingMessage);
+            cluster.addListener('exit', this.handleWorkerExit);
+            cluster.addListener('message', this.handleClusterIncomingMessage);
         }
         else {
             process.addListener('message', this.handleIncomingMessage);
         }
     }
     async callWithResult(action, ...params) {
+        return this.sendCallWithResult(action, this.processes, ...params);
+    }
+    call(action, ...params) {
         const messageId = utils_1.randomHash();
-        const results = Promise.all(this.processes.map(p => new Promise((resolve, reject) => {
+        return this.sendCall(action, messageId, ...params);
+    }
+    as(targetProcesses) {
+        return new Proxy(this, {
+            get: (target, propKey, receiver) => async (...args) => {
+                const result = await this.sendCallWithResult(propKey.toString(), targetProcesses ? targetProcesses : this.processes, ...args);
+                if (result.isValid) {
+                    return result.firstResult;
+                }
+                throw new Error(result.firstError || 'Unknown error');
+            },
+        });
+    }
+    rejectAllCalls() {
+        this.waitedResponses.forEach(item => item.reject('MANUAL_REJECTED_ALL'));
+    }
+    sendCall(action, messageId, ...params) {
+        const message = {
+            TOPICS: this.topics,
+            ACTION: action,
+            PARAMS: params,
+            MESSAGE_ID: messageId,
+            WORKER: cluster.isMaster ? 'master' : cluster.worker?.id,
+        };
+        this.processes.forEach(p => p.send(message));
+        return message;
+    }
+    async sendCallWithResult(action, targetProcesses, ...params) {
+        const messageId = utils_1.randomHash();
+        const results = Promise.all(targetProcesses.map(p => new Promise((resolve, reject) => {
             const workerId = (p instanceof cluster.Worker) ? p.id : 'master';
             this.waitedResponses.push({
                 resolve: (message) => {
@@ -93,35 +125,6 @@ class IpcMethodHandler extends events_1.EventEmitter {
         })));
         this.sendCall(action, messageId, ...params);
         return new IpcMethodResult_1.IpcMethodResult(await results);
-    }
-    call(action, ...params) {
-        const messageId = utils_1.randomHash();
-        return this.sendCall(action, messageId, ...params);
-    }
-    as() {
-        return new Proxy(this, {
-            get: (target, propKey, receiver) => async (...args) => {
-                const result = await this.callWithResult(propKey.toString(), ...args);
-                if (result.isValid) {
-                    return result.firstResult;
-                }
-                throw new Error(result.firstError || 'Unknown error');
-            },
-        });
-    }
-    rejectAllCalls() {
-        this.waitedResponses.forEach(item => item.reject('MANUAL_REJECTED_ALL'));
-    }
-    sendCall(action, messageId, ...params) {
-        const message = {
-            TOPICS: this.topics,
-            ACTION: action,
-            PARAMS: params,
-            MESSAGE_ID: messageId,
-            WORKER: cluster.isMaster ? 'master' : cluster.worker?.id,
-        };
-        this.processes.forEach(p => p.send(message));
-        return message;
     }
     get processes() {
         if (cluster.isWorker) {
