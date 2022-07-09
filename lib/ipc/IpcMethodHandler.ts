@@ -45,8 +45,8 @@ export class IpcMethodHandler extends EventEmitter {
   ) {
     super()
     if (cluster.isMaster) {
-      cluster?.on('exit', this.handleWorkerExit)
-      cluster?.on('message', this.handleClusterIncomingMessage)
+      cluster.addListener('exit', this.handleWorkerExit)
+      cluster.addListener('message', this.handleClusterIncomingMessage)
     } else {
       process.addListener('message', this.handleIncomingMessage)
     }
