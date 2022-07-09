@@ -14,10 +14,12 @@ const workerReceiver = {
  */
 ;(async function() {
   if (cluster.isMaster) {
+    console.log('Master', process.pid)
     cluster.fork()
     const handler = new IpcMethodHandler(['test-topic'], masterReceiver)
     await handler.as<typeof workerReceiver>().testWorker()
   } else {
+    console.log('Fork', process.pid)
     const handler = new IpcMethodHandler(['test-topic'], workerReceiver)
     await handler.as<typeof masterReceiver>().testMaster()
   }
