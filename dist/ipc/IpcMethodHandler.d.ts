@@ -1,5 +1,6 @@
 /// <reference types="node" />
 import * as cluster from 'cluster';
+import { EventEmitter } from 'events';
 import { IpcMethodResult } from './IpcMethodResult';
 export declare type ArgumentTypes<T> = T extends (...args: infer U) => infer R ? U : never;
 export declare type ThenArg<T> = T extends PromiseLike<infer U> ? U : T;
@@ -26,7 +27,7 @@ export declare const MESSAGE_RESULT: {
     SUCCESS: string;
     ERROR: string;
 };
-export declare class IpcMethodHandler {
+export declare class IpcMethodHandler extends EventEmitter {
     readonly topics: string[];
     readonly receivers: {
         [name: string]: (...params: any[]) => Promise<any>;

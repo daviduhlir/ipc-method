@@ -1,4 +1,5 @@
 import * as cluster from 'cluster'
+import { EventEmitter } from 'events';
 import { arrayCompare, randomHash } from '../utils'
 import { IpcMethodResult } from './IpcMethodResult'
 
@@ -35,13 +36,14 @@ export const MESSAGE_RESULT = {
   ERROR: 'ERROR',
 }
 
-export class IpcMethodHandler {
+export class IpcMethodHandler extends EventEmitter {
   protected waitedResponses: IpcCallWaiter[] = []
 
   constructor(
     public readonly topics: string[],
     public readonly receivers: {[name: string]: (...params: any[]) => Promise<any>} = {}
   ) {
+    super()
     if (cluster.isMaster) {
       cluster?.on('exit', this.handleWorkerExit)
       cluster?.on('message', this.handleClusterIncomingMessage)
