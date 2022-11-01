@@ -81,9 +81,9 @@ class IpcMethodHandler extends events_1.EventEmitter {
             get: (target, propKey, receiver) => async (...args) => {
                 const result = await this.sendCallWithResult(propKey.toString(), targetProcesses ? targetProcesses : this.processes, ...args);
                 if (result.isValid) {
-                    return result.firstResult;
+                    return result;
                 }
-                throw new Error(result.firstError || 'Unknown error');
+                throw new Error(result.allErrors.join(', ') || 'Unknown error');
             },
         });
     }
