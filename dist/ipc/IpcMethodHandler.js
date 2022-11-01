@@ -77,18 +77,26 @@ class IpcMethodHandler extends events_1.EventEmitter {
         return this.sendCall(action, this.processes, messageId, ...params);
     }
     as(targetProcesses) {
-        return new Proxy(this, {
-            get: (target, propKey, receiver) => async (...args) => {
-                const result = await this.sendCallWithResult(propKey.toString(), targetProcesses ? targetProcesses : this.processes, ...args);
-                if (result.isValid) {
-                    return result;
-                }
-                throw new Error(result.allErrors.join(', ') || 'Unknown error');
-            },
-        });
+        return this.asProxyHandler(targetProcesses, true);
+    }
+    asProxy(targetProcesses) {
+        return this.asProxyHandler(targetProcesses, false);
     }
     rejectAllCalls() {
         this.waitedResponses.forEach(item => item.reject('MANUAL_REJECTED_ALL'));
+    }
+    asProxyHandler(targetProcesses, useFirstResult) {
+        return new Proxy(this, {
+            get: (target, propKey, receiver) => async (...args) => {
+                const result = await this.sendCallWithResult(propKey.toString(), targetProcesses ? targetProcesses : this.processes, ...args);
+                if (useFirstResult) {
+                    return result.result;
+                }
+                else {
+                    return result;
+                }
+            },
+        });
     }
     sendCall(action, targetProcesses, messageId, ...params) {
         const message = {

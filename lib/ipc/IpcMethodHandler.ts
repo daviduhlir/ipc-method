@@ -13,6 +13,12 @@ export type AsObject<T> = {
   >
 }
 
+export type AsObjectFirstResult<T> = {
+  [K in keyof T]: (...a: ArgumentTypes<T[K]>) => Promise<
+    ThenArg<(ReturnType<T[K] extends (...args: any) => Promise<any> ? (T[K]) : never>)>
+  >
+}
+
 export interface IpcInternalMessage {
   TOPICS: string[]
   ACTION: string
@@ -69,18 +75,21 @@ export class IpcMethodHandler extends EventEmitter {
 
   /**
    * Get proxy object, where every each property you get will be returned
-   * as method call to receiver layer. Use template to keep typeings of your receiver on it.
+   * as method call to receiver layer. Use template to keep typings of your receiver on it.
+   * Every each call on this method will result only with first valid results, and also the same for error.
    */
-  public as<T>(targetProcesses?: (NodeJS.Process | cluster.Worker)[]): AsObject<T> {
-    return new Proxy(this as any, {
-      get: (target, propKey, receiver) => async (...args) => {
-        const result = await this.sendCallWithResult(propKey.toString(), targetProcesses ? targetProcesses : this.processes, ...args)
-        if (result.isValid) {
-          return result
-        }
-        throw new Error(result.allErrors.join(', ') || 'Unknown error')
-      },
-    })
+  public as<T>(targetProcesses?: (NodeJS.Process | cluster.Worker)[]): AsObjectFirstResult<T> {
+    return this.asProxyHandler(targetProcesses, true)
+  }
+
+  /**
+   * Get proxy object, where every each property you get will be returned
+   * as method call to receiver layer. Use template to keep typeings of your receiver on it.
+   *
+   * Every each call will returns all posible results as array. If result is not valid, error will be thrown.
+   */
+  public asProxy<T>(targetProcesses?: (NodeJS.Process | cluster.Worker)[]): AsObject<T> {
+    return this.asProxyHandler(targetProcesses, false)
   }
 
   /**
@@ -95,6 +104,23 @@ export class IpcMethodHandler extends EventEmitter {
    * Internal methods
    *
    *******************************/
+
+  /**
+   * Get proxy object, where every each property you get will be returned
+   * as method call to receiver layer. Use template to keep typeings of your receiver on it.
+   */
+   protected asProxyHandler<T>(targetProcesses?: (NodeJS.Process | cluster.Worker)[], useFirstResult?: boolean) {
+    return new Proxy(this as any, {
+      get: (target, propKey, receiver) => async (...args) => {
+        const result = await this.sendCallWithResult(propKey.toString(), targetProcesses ? targetProcesses : this.processes, ...args)
+        if (useFirstResult) {
+          return result.result
+        } else {
+          return result
+        }
+      },
+    })
+  }
 
   /**
    * Sends call message

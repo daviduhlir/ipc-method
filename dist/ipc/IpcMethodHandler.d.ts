@@ -9,6 +9,9 @@ export declare type ThenArg<T> = T extends PromiseLike<infer U> ? U : T;
 export declare type AsObject<T> = {
     [K in keyof T]: (...a: ArgumentTypes<T[K]>) => Promise<IpcMethodResult<ThenArg<(ReturnType<T[K] extends (...args: any) => Promise<any> ? (T[K]) : never>)>>>;
 };
+export declare type AsObjectFirstResult<T> = {
+    [K in keyof T]: (...a: ArgumentTypes<T[K]>) => Promise<ThenArg<(ReturnType<T[K] extends (...args: any) => Promise<any> ? (T[K]) : never>)>>;
+};
 export interface IpcInternalMessage {
     TOPICS: string[];
     ACTION: string;
@@ -40,8 +43,10 @@ export declare class IpcMethodHandler extends EventEmitter {
     });
     callWithResult<T>(action: string, ...params: any[]): Promise<IpcMethodResult<T>>;
     call(action: string, ...params: any[]): IpcInternalMessage;
-    as<T>(targetProcesses?: (NodeJS.Process | cluster.Worker)[]): AsObject<T>;
+    as<T>(targetProcesses?: (NodeJS.Process | cluster.Worker)[]): AsObjectFirstResult<T>;
+    asProxy<T>(targetProcesses?: (NodeJS.Process | cluster.Worker)[]): AsObject<T>;
     rejectAllCalls(): void;
+    protected asProxyHandler<T>(targetProcesses?: (NodeJS.Process | cluster.Worker)[], useFirstResult?: boolean): any;
     protected sendCall(action: string, targetProcesses: (NodeJS.Process | cluster.Worker)[], messageId: string, ...params: any[]): IpcInternalMessage;
     protected sendCallWithResult<T>(action: string, targetProcesses: (NodeJS.Process | cluster.Worker)[], ...params: any[]): Promise<IpcMethodResult<T>>;
     protected get processes(): (NodeJS.Process | cluster.Worker)[];
