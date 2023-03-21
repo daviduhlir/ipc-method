@@ -7,10 +7,10 @@ import { IpcMethodResult } from './IpcMethodResult';
 export declare type ArgumentTypes<T> = T extends (...args: infer U) => infer R ? U : never;
 export declare type ThenArg<T> = T extends PromiseLike<infer U> ? U : T;
 export declare type AsObject<T> = {
-    [K in keyof T]: (...a: ArgumentTypes<T[K]>) => Promise<IpcMethodResult<ThenArg<(ReturnType<T[K] extends (...args: any) => Promise<any> ? (T[K]) : never>)>>>;
+    [K in keyof T]: (...a: ArgumentTypes<T[K]>) => Promise<IpcMethodResult<ThenArg<ReturnType<T[K] extends (...args: any) => Promise<any> ? T[K] : never>>>>;
 };
 export declare type AsObjectFirstResult<T> = {
-    [K in keyof T]: (...a: ArgumentTypes<T[K]>) => Promise<ThenArg<(ReturnType<T[K] extends (...args: any) => Promise<any> ? (T[K]) : never>)>>;
+    [K in keyof T]: (...a: ArgumentTypes<T[K]>) => Promise<ThenArg<ReturnType<T[K] extends (...args: any) => Promise<any> ? T[K] : never>>>;
 };
 export interface IpcInternalMessage {
     TOPICS: string[];

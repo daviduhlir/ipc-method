@@ -2,9 +2,7 @@
  * RPC call result
  */
 export class IpcMethodResult<T> {
-  constructor(
-    public readonly allResults: {result?: T; error?: any}[],
-  ) {}
+  constructor(public readonly allResults: { result?: T; error?: any }[]) {}
 
   public get results(): T[] {
     if (this.isValid) {

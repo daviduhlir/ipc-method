@@ -1,22 +1,18 @@
 import * as cluster from 'cluster'
-import { EventEmitter } from 'events';
+import { EventEmitter } from 'events'
 import { arrayCompare, randomHash } from '../utils'
 import { IpcMethodResult } from './IpcMethodResult'
 
-export type ArgumentTypes<T> = T extends (... args: infer U ) => infer R ? U: never;
+export type ArgumentTypes<T> = T extends (...args: infer U) => infer R ? U : never
 export type ThenArg<T> = T extends PromiseLike<infer U> ? U : T
 export type AsObject<T> = {
-  [K in keyof T]: (...a: ArgumentTypes<T[K]>) => Promise<
-    IpcMethodResult<
-      ThenArg<(ReturnType<T[K] extends (...args: any) => Promise<any> ? (T[K]) : never>)>
-    >
-  >
+  [K in keyof T]: (
+    ...a: ArgumentTypes<T[K]>
+  ) => Promise<IpcMethodResult<ThenArg<ReturnType<T[K] extends (...args: any) => Promise<any> ? T[K] : never>>>>
 }
 
 export type AsObjectFirstResult<T> = {
-  [K in keyof T]: (...a: ArgumentTypes<T[K]>) => Promise<
-    ThenArg<(ReturnType<T[K] extends (...args: any) => Promise<any> ? (T[K]) : never>)>
-  >
+  [K in keyof T]: (...a: ArgumentTypes<T[K]>) => Promise<ThenArg<ReturnType<T[K] extends (...args: any) => Promise<any> ? T[K] : never>>>
 }
 
 export interface IpcInternalMessage {
@@ -45,10 +41,7 @@ export const MESSAGE_RESULT = {
 export class IpcMethodHandler extends EventEmitter {
   protected waitedResponses: IpcCallWaiter[] = []
 
-  constructor(
-    public readonly topics: string[],
-    public readonly receivers: {[name: string]: (...params: any[]) => Promise<any>} = {}
-  ) {
+  constructor(public readonly topics: string[], public readonly receivers: { [name: string]: (...params: any[]) => Promise<any> } = {}) {
     super()
     if (cluster.isMaster) {
       cluster.addListener('exit', this.handleWorkerExit)
@@ -109,20 +102,22 @@ export class IpcMethodHandler extends EventEmitter {
    * Get proxy object, where every each property you get will be returned
    * as method call to receiver layer. Use template to keep typeings of your receiver on it.
    */
-   protected asProxyHandler<T>(targetProcesses?: (NodeJS.Process | cluster.Worker)[], useFirstResult?: boolean) {
+  protected asProxyHandler<T>(targetProcesses?: (NodeJS.Process | cluster.Worker)[], useFirstResult?: boolean) {
     return new Proxy(this as any, {
-      get: (target, propKey, receiver) => async (...args) => {
-        const key = propKey.toString()
-        if (key === 'then' || key === 'catch') {
-					return undefined;
-				}
-        const result = await this.sendCallWithResult(key, targetProcesses ? targetProcesses : this.processes, ...args)
-        if (useFirstResult) {
-          return result.result
-        } else {
-          return result
-        }
-      },
+      get:
+        (target, propKey, receiver) =>
+        async (...args) => {
+          const key = propKey.toString()
+          if (key === 'then' || key === 'catch') {
+            return undefined
+          }
+          const result = await this.sendCallWithResult(key, targetProcesses ? targetProcesses : this.processes, ...args)
+          if (useFirstResult) {
+            return result.result
+          } else {
+            return result
+          }
+        },
     })
   }
 
@@ -141,35 +136,40 @@ export class IpcMethodHandler extends EventEmitter {
     return message
   }
 
- /**
-  * Send message and wait for results
-  */
-  protected async sendCallWithResult<T>(action: string, targetProcesses: (NodeJS.Process | cluster.Worker)[], ...params: any[]): Promise<IpcMethodResult<T>> {
+  /**
+   * Send message and wait for results
+   */
+  protected async sendCallWithResult<T>(
+    action: string,
+    targetProcesses: (NodeJS.Process | cluster.Worker)[],
+    ...params: any[]
+  ): Promise<IpcMethodResult<T>> {
     const messageId = randomHash()
 
     const results = Promise.all(
-      targetProcesses.map(p => new Promise((resolve, reject) => {
+      targetProcesses.map(
+        p =>
+          new Promise((resolve, reject) => {
+            const workerId = p instanceof cluster.Worker ? p.id : 'master'
 
-        const workerId = (p instanceof cluster.Worker) ? p.id : 'master'
-
-        this.waitedResponses.push({
-          resolve: (message: IpcInternalMessage) => {
-            this.waitedResponses = this.waitedResponses.filter(i => !(i.messageId === messageId && i.workerId === workerId))
-            if (message.RESULT === MESSAGE_RESULT.SUCCESS) {
-              resolve({ result: message.value })
-            } else {
-              resolve({ error: message.error })
-            }
-          },
-          reject: () => {
-            this.waitedResponses = this.waitedResponses.filter(i => !(i.messageId === messageId && i.workerId === workerId))
-            resolve({ error: new Error(`Call was rejected, process probably died during call, or rejection was called.`) })
-          },
-          messageId,
-          workerId,
-        })
-
-      }))
+            this.waitedResponses.push({
+              resolve: (message: IpcInternalMessage) => {
+                this.waitedResponses = this.waitedResponses.filter(i => !(i.messageId === messageId && i.workerId === workerId))
+                if (message.RESULT === MESSAGE_RESULT.SUCCESS) {
+                  resolve({ result: message.value })
+                } else {
+                  resolve({ error: message.error })
+                }
+              },
+              reject: () => {
+                this.waitedResponses = this.waitedResponses.filter(i => !(i.messageId === messageId && i.workerId === workerId))
+                resolve({ error: new Error(`Call was rejected, process probably died during call, or rejection was called.`) })
+              },
+              messageId,
+              workerId,
+            })
+          }),
+      ),
     )
     this.sendCall(action, targetProcesses, messageId, ...params)
     return new IpcMethodResult(await results)
@@ -189,9 +189,7 @@ export class IpcMethodHandler extends EventEmitter {
   /**
    * handlee worker exited
    */
-  protected handleWorkerExit = (worker: cluster.Worker) => {
-
-  }
+  protected handleWorkerExit = (worker: cluster.Worker) => {}
 
   protected handleClusterIncomingMessage = async (worker: cluster.Worker, message: any) => {
     if (worker) {
@@ -214,7 +212,7 @@ export class IpcMethodHandler extends EventEmitter {
             throw new Error('METHOD_NOT_FOUND')
           }
           value = await this.receivers[message.ACTION](...(message.PARAMS || []))
-        } catch(e) {
+        } catch (e) {
           error = e.toString()
         }
 
@@ -235,7 +233,7 @@ export class IpcMethodHandler extends EventEmitter {
           }
         }
       }
-    // Result from IPC call
+      // Result from IPC call
     } else if (message.MESSAGE_ID) {
       const foundItem = this.waitedResponses.find(item => item.messageId === message.MESSAGE_ID && item.workerId === workerId)
       if (foundItem) {

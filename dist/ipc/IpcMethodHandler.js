@@ -15,8 +15,7 @@ class IpcMethodHandler extends events_1.EventEmitter {
         this.topics = topics;
         this.receivers = receivers;
         this.waitedResponses = [];
-        this.handleWorkerExit = (worker) => {
-        };
+        this.handleWorkerExit = (worker) => { };
         this.handleClusterIncomingMessage = async (worker, message) => {
             if (worker) {
                 return this.handleIncomingMessage(message, worker.id);
@@ -88,7 +87,11 @@ class IpcMethodHandler extends events_1.EventEmitter {
     asProxyHandler(targetProcesses, useFirstResult) {
         return new Proxy(this, {
             get: (target, propKey, receiver) => async (...args) => {
-                const result = await this.sendCallWithResult(propKey.toString(), targetProcesses ? targetProcesses : this.processes, ...args);
+                const key = propKey.toString();
+                if (key === 'then' || key === 'catch') {
+                    return undefined;
+                }
+                const result = await this.sendCallWithResult(key, targetProcesses ? targetProcesses : this.processes, ...args);
                 if (useFirstResult) {
                     return result.result;
                 }
@@ -112,7 +115,7 @@ class IpcMethodHandler extends events_1.EventEmitter {
     async sendCallWithResult(action, targetProcesses, ...params) {
         const messageId = (0, utils_1.randomHash)();
         const results = Promise.all(targetProcesses.map(p => new Promise((resolve, reject) => {
-            const workerId = (p instanceof cluster.Worker) ? p.id : 'master';
+            const workerId = p instanceof cluster.Worker ? p.id : 'master';
             this.waitedResponses.push({
                 resolve: (message) => {
                     this.waitedResponses = this.waitedResponses.filter(i => !(i.messageId === messageId && i.workerId === workerId));
