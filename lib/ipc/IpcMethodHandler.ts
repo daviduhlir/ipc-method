@@ -112,7 +112,11 @@ export class IpcMethodHandler extends EventEmitter {
    protected asProxyHandler<T>(targetProcesses?: (NodeJS.Process | cluster.Worker)[], useFirstResult?: boolean) {
     return new Proxy(this as any, {
       get: (target, propKey, receiver) => async (...args) => {
-        const result = await this.sendCallWithResult(propKey.toString(), targetProcesses ? targetProcesses : this.processes, ...args)
+        const key = propKey.toString()
+        if (key === 'then' || key === 'catch') {
+					return undefined;
+				}
+        const result = await this.sendCallWithResult(key, targetProcesses ? targetProcesses : this.processes, ...args)
         if (useFirstResult) {
           return result.result
         } else {
