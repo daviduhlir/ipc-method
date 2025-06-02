@@ -38,10 +38,17 @@ export const MESSAGE_RESULT = {
   ERROR: 'ERROR',
 }
 
+export type IpcPublicPromiseMethodsObject<T> = {
+  [K in keyof T as T[K] extends (...params: any[]) => Promise<any> ? K : never]: T[K]
+}
+
 export class IpcMethodHandler extends EventEmitter {
   protected waitedResponses: IpcCallWaiter[] = []
 
-  constructor(public readonly topics: string[], public readonly receivers: { [name: string]: (...params: any[]) => Promise<any> } = {}) {
+  constructor(
+    public readonly topics: string[],
+    public readonly receivers: IpcPublicPromiseMethodsObject<any> = {}
+  ) {
     super()
     if (cluster.isMaster) {
       cluster.addListener('exit', this.handleWorkerExit)

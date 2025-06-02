@@ -32,15 +32,14 @@ export declare const MESSAGE_RESULT: {
     SUCCESS: string;
     ERROR: string;
 };
+export declare type IpcPublicPromiseMethodsObject<T> = {
+    [K in keyof T as T[K] extends (...params: any[]) => Promise<any> ? K : never]: T[K];
+};
 export declare class IpcMethodHandler extends EventEmitter {
     readonly topics: string[];
-    readonly receivers: {
-        [name: string]: (...params: any[]) => Promise<any>;
-    };
+    readonly receivers: IpcPublicPromiseMethodsObject<any>;
     protected waitedResponses: IpcCallWaiter[];
-    constructor(topics: string[], receivers?: {
-        [name: string]: (...params: any[]) => Promise<any>;
-    });
+    constructor(topics: string[], receivers?: IpcPublicPromiseMethodsObject<any>);
     callWithResult<T>(action: string, ...params: any[]): Promise<IpcMethodResult<T>>;
     call(action: string, ...params: any[]): IpcInternalMessage;
     as<T>(targetProcesses?: (NodeJS.Process | cluster.Worker)[]): AsObjectFirstResult<T>;
