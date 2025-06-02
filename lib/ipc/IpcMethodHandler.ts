@@ -45,10 +45,7 @@ export type IpcPublicPromiseMethodsObject<T> = {
 export class IpcMethodHandler extends EventEmitter {
   protected waitedResponses: IpcCallWaiter[] = []
 
-  constructor(
-    public readonly topics: string[],
-    public readonly receivers: IpcPublicPromiseMethodsObject<any> = {}
-  ) {
+  constructor(public readonly topics: string[], public readonly receivers: IpcPublicPromiseMethodsObject<any> = {}) {
     super()
     if (cluster.isMaster) {
       cluster.addListener('exit', this.handleWorkerExit)
@@ -111,21 +108,20 @@ export class IpcMethodHandler extends EventEmitter {
    */
   protected asProxyHandler<T>(targetProcesses?: (NodeJS.Process | cluster.Worker)[], useFirstResult?: boolean) {
     return new Proxy(this as any, {
-      get:
-        (target, propKey, receiver) => {
-          const key = propKey.toString()
-          if (key === 'then' || key === 'catch') {
-            return undefined
-          }
-          return async (...args) => {
-            const result = await this.sendCallWithResult(key, targetProcesses ? targetProcesses : this.processes, ...args)
-            if (useFirstResult) {
-              return result.result
-            } else {
-              return result
-            }
+      get: (target, propKey, receiver) => {
+        const key = propKey.toString()
+        if (key === 'then' || key === 'catch') {
+          return undefined
+        }
+        return async (...args) => {
+          const result = await this.sendCallWithResult(key, targetProcesses ? targetProcesses : this.processes, ...args)
+          if (useFirstResult) {
+            return result.result
+          } else {
+            return result
           }
         }
+      },
     })
   }
 
