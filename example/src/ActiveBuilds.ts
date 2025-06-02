@@ -78,7 +78,7 @@ export class ActiveBuilds {
       return
     }
 
-    if (cluster.isMaster) {
+    if (!cluster.default.isWorker) {
       ActiveBuilds.storage = new ActiveBuildsStorage()
       new IpcMethodHandler(['shared-cache-topic'], ActiveBuilds.storage)
     } else {

@@ -47,9 +47,9 @@ export class IpcMethodHandler extends EventEmitter {
 
   constructor(public readonly topics: string[], public readonly receivers: IpcPublicPromiseMethodsObject<any> = {}) {
     super()
-    if (cluster.isMaster) {
-      cluster.addListener('exit', this.handleWorkerExit)
-      cluster.addListener('message', this.handleClusterIncomingMessage)
+    if (!cluster.default.isWorker) {
+      cluster.default.addListener('exit', this.handleWorkerExit)
+      cluster.default.addListener('message', this.handleClusterIncomingMessage)
     } else {
       process.addListener('message', this.handleIncomingMessage)
     }
@@ -134,7 +134,7 @@ export class IpcMethodHandler extends EventEmitter {
       ACTION: action,
       PARAMS: params,
       MESSAGE_ID: messageId,
-      WORKER: cluster.isMaster ? 'master' : cluster.worker?.id,
+      WORKER: !cluster.default.isWorker ? 'master' : cluster.default.worker?.id,
     }
     targetProcesses.forEach(p => p.send(message))
     return message
@@ -183,10 +183,10 @@ export class IpcMethodHandler extends EventEmitter {
    * Get all avaliable processes
    */
   protected get processes(): (NodeJS.Process | cluster.Worker)[] {
-    if (cluster.isWorker) {
+    if (cluster.default.isWorker) {
       return [process]
     } else {
-      return Object.keys(cluster.workers).reduce((acc, workerId) => [...acc, cluster.workers?.[workerId]], [])
+      return Object.keys(cluster.default.workers).reduce((acc, workerId) => [...acc, cluster.default.workers?.[workerId]], [])
     }
   }
 
@@ -233,7 +233,7 @@ export class IpcMethodHandler extends EventEmitter {
           if (workerId === 'master') {
             process.send(resultMessage)
           } else {
-            cluster.workers[workerId].send(resultMessage)
+            cluster.default.workers[workerId].send(resultMessage)
           }
         }
       }

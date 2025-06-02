@@ -20,7 +20,7 @@ const workerReceiver = {
  * Start test
  */
 ;(async function() {
-  if (cluster.isMaster) {
+  if (!cluster.isWorker) {
     cluster.fork()
     const handler = new IpcMethodHandler(['test-topic'], masterReceiver)
     await handler.as<typeof workerReceiver>().testWorker()

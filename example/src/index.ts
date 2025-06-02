@@ -1,4 +1,3 @@
-import { IpcMethodHandler } from '@david.uhlir/ipc-method'
 import * as cluster from 'cluster'
 import { ActiveBuilds } from './ActiveBuilds'
 
@@ -21,15 +20,15 @@ const workerReceiver = {
  */
 ;(async function() {
 
-  if (cluster.isMaster) {
+  if (!cluster.default.isWorker) {
     console.log('Master', process.pid)
     console.log(await ActiveBuilds.setBuild({
       id: '123',
     }))
-    cluster.fork()
-    cluster.fork()
-    cluster.fork()
-    cluster.fork()
+    cluster.default.fork()
+    cluster.default.fork()
+    cluster.default.fork()
+    cluster.default.fork()
     //const handler = new IpcMethodHandler(['test-topic'], masterReceiver)
     //console.log('Master -> Fork', await handler.as<typeof workerReceiver>().testWorker())
   } else {
