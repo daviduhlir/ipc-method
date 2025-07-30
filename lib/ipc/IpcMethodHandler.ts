@@ -217,7 +217,7 @@ export class IpcMethodHandler extends EventEmitter {
           }
           value = await this.receivers[message.ACTION](...(message.PARAMS || []))
         } catch (e) {
-          error = e.toString()
+          error = e?.message || e.toString()
         }
 
         if (message.MESSAGE_ID) {
