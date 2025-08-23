@@ -1,3 +1,4 @@
+import { IpcErrorHandler } from '../utils/IpcErrorHandler'
 /**
  * RPC call result
  */
@@ -8,14 +9,14 @@ export class IpcMethodResult<T> {
     if (this.isValid) {
       return this.allResults.map(i => i.result)
     }
-    throw new Error(this.firstError || 'Unknown error')
+    throw IpcErrorHandler.deserializeError(this.firstError || 'Unknown error')
   }
 
   public get result(): T {
     if (this.isValid) {
       return this.firstResult
     }
-    throw new Error(this.firstError || 'Unknown error')
+    throw IpcErrorHandler.deserializeError(this.firstError || 'Unknown error')
   }
 
   public get isValid(): boolean {
@@ -30,11 +31,11 @@ export class IpcMethodResult<T> {
     return this.allResults.filter(i => !i?.error).map(i => i.result)
   }
 
-  public get firstError(): string {
+  public get firstError(): string | Record<string, any> {
     return this.allResults.find(i => i?.error)?.error
   }
 
-  public get allErrors(): string[] {
+  public get allErrors(): (string | Record<string, any>)[] {
     return this.allResults.filter(i => i?.error).map(i => i.error)
   }
 }

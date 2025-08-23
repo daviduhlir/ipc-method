@@ -2,6 +2,7 @@ import * as cluster from 'cluster'
 import { EventEmitter } from 'events'
 import { arrayCompare, randomHash } from '../utils'
 import { IpcMethodResult } from './IpcMethodResult'
+import { IpcErrorHandler } from '../utils/IpcErrorHandler'
 
 export type ArgumentTypes<T> = T extends (...args: infer U) => infer R ? U : never
 export type ThenArg<T> = T extends PromiseLike<infer U> ? U : T
@@ -217,7 +218,7 @@ export class IpcMethodHandler extends EventEmitter {
           }
           value = await this.receivers[message.ACTION](...(message.PARAMS || []))
         } catch (e) {
-          error = e?.message || e.toString()
+          error = IpcErrorHandler.serializeError(e)
         }
 
         if (message.MESSAGE_ID) {
