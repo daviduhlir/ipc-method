@@ -43,11 +43,25 @@ export type IpcPublicPromiseMethodsObject<T> = {
   [K in keyof T as T[K] extends (...params: any[]) => Promise<any> ? K : never]: T[K]
 }
 
+export interface IpcMethodHandlerOptions {
+  messageSizeLimit: number // in bytes, default is 1MB
+}
+
+export const DEFAULT_IPC_METHOD_HANDLER_OPTIONS: IpcMethodHandlerOptions = {
+  messageSizeLimit: 5 * 1024 * 1024, // 5MB
+}
+
 export class IpcMethodHandler extends EventEmitter {
   protected waitedResponses: IpcCallWaiter[] = []
+  protected options: IpcMethodHandlerOptions = DEFAULT_IPC_METHOD_HANDLER_OPTIONS
 
-  constructor(public readonly topics: string[], public readonly receivers: IpcPublicPromiseMethodsObject<any> = {}) {
+  constructor(
+    public readonly topics: string[],
+    public readonly receivers: IpcPublicPromiseMethodsObject<any> = {},
+    options: Partial<IpcMethodHandlerOptions> = {},
+  ) {
     super()
+    this.options = { ...DEFAULT_IPC_METHOD_HANDLER_OPTIONS, ...options }
     if (!cluster.default.isWorker) {
       cluster.default.addListener('exit', this.handleWorkerExit)
       cluster.default.addListener('message', this.handleClusterIncomingMessage)
@@ -136,6 +150,10 @@ export class IpcMethodHandler extends EventEmitter {
       PARAMS: params,
       MESSAGE_ID: messageId,
       WORKER: !cluster.default.isWorker ? 'master' : cluster.default.worker?.id,
+    }
+    const messageSize = JSON.stringify(message).length
+    if (messageSize > this.options.messageSizeLimit) {
+      throw new Error(`Message size limit exceeded`)
     }
     targetProcesses.forEach(p => p.send(message))
     return message
@@ -231,9 +249,33 @@ export class IpcMethodHandler extends EventEmitter {
             value,
           }
 
+          const resultSize = JSON.stringify(resultMessage).length
+
           if (workerId === 'master') {
+            if (resultSize > this.options.messageSizeLimit) {
+              // Handle message size limit exceeded
+              process.send({
+                TOPICS: message.TOPICS,
+                ACTION: message.ACTION,
+                MESSAGE_ID: message.MESSAGE_ID,
+                RESULT: MESSAGE_RESULT.ERROR,
+                error: `Message size limit exceeded`,
+              })
+              return
+            }
             process.send(resultMessage)
           } else {
+            if (resultSize > this.options.messageSizeLimit) {
+              // Handle message size limit exceeded
+              cluster.default.workers[workerId].send({
+                TOPICS: message.TOPICS,
+                ACTION: message.ACTION,
+                MESSAGE_ID: message.MESSAGE_ID,
+                RESULT: MESSAGE_RESULT.ERROR,
+                error: `Message size limit exceeded`,
+              })
+              return
+            }
             cluster.default.workers[workerId].send(resultMessage)
           }
         }

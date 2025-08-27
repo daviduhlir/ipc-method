@@ -80,9 +80,9 @@ export class ActiveBuilds {
 
     if (!cluster.default.isWorker) {
       ActiveBuilds.storage = new ActiveBuildsStorage()
-      new IpcMethodHandler(['shared-cache-topic'], ActiveBuilds.storage)
+      new IpcMethodHandler(['shared-cache-topic'], ActiveBuilds.storage, { messageSizeLimit: 1024 })
     } else {
-      const handler = new IpcMethodHandler(['shared-cache-topic'])
+      const handler = new IpcMethodHandler(['shared-cache-topic'], { messageSizeLimit: 1024 })
       ActiveBuilds.storage = handler.as<ActiveBuildsStorage>()
 
       // check if master is attached
