@@ -145,7 +145,13 @@ export class IpcMethodHandler extends EventEmitter {
   /**
    * Sends call message
    */
-  protected sendCall(action: string, targetProcesses: (NodeJS.Process | cluster.Worker)[], messageId: string, params: any[], transferedMetadata: any = null): IpcInternalMessage {
+  protected sendCall(
+    action: string,
+    targetProcesses: (NodeJS.Process | cluster.Worker)[],
+    messageId: string,
+    params: any[],
+    transferedMetadata: any = null,
+  ): IpcInternalMessage {
     const message = {
       TOPICS: this.topics,
       ACTION: action,
@@ -237,7 +243,9 @@ export class IpcMethodHandler extends EventEmitter {
           if (typeof this.receivers[message.ACTION] !== 'function') {
             throw new Error('METHOD_NOT_FOUND')
           }
-          value = await IpcMetadataTransfer.callWithMetadata(message.TRANSFERRED_METADATA, () => this.receivers[message.ACTION](...(message.PARAMS || [])))
+          value = await IpcMetadataTransfer.callWithMetadata(message.TRANSFERRED_METADATA, () =>
+            this.receivers[message.ACTION](...(message.PARAMS || [])),
+          )
         } catch (e) {
           error = IpcErrorHandler.serializeError(e)
         }
