@@ -3,6 +3,7 @@ import { EventEmitter } from 'events'
 import { arrayCompare, randomHash } from '../utils'
 import { IpcMethodResult } from './IpcMethodResult'
 import { IpcErrorHandler } from '../utils/IpcErrorHandler'
+import { IpcMetadataTransfer } from '../utils/IpcMetadataTransfer'
 
 export type ArgumentTypes<T> = T extends (...args: infer U) => infer R ? U : never
 export type ThenArg<T> = T extends PromiseLike<infer U> ? U : T
@@ -23,6 +24,7 @@ export interface IpcInternalMessage {
   MESSAGE_ID?: string
   WORKER?: number | string
   RESULT?: string
+  TRANSFERRED_METADATA?: any
   value?: any
   error?: any
 }
@@ -82,7 +84,7 @@ export class IpcMethodHandler extends EventEmitter {
    */
   public call(action: string, ...params: any[]): IpcInternalMessage {
     const messageId = randomHash()
-    return this.sendCall(action, this.processes, messageId, ...params)
+    return this.sendCall(action, this.processes, messageId, params)
   }
 
   /**
@@ -143,13 +145,14 @@ export class IpcMethodHandler extends EventEmitter {
   /**
    * Sends call message
    */
-  protected sendCall(action: string, targetProcesses: (NodeJS.Process | cluster.Worker)[], messageId: string, ...params: any[]): IpcInternalMessage {
+  protected sendCall(action: string, targetProcesses: (NodeJS.Process | cluster.Worker)[], messageId: string, params: any[], transferedMetadata: any = null): IpcInternalMessage {
     const message = {
       TOPICS: this.topics,
       ACTION: action,
       PARAMS: params,
       MESSAGE_ID: messageId,
       WORKER: !cluster.default.isWorker ? 'master' : cluster.default.worker?.id,
+      TRANSFERRED_METADATA: transferedMetadata,
     }
     const messageSize = JSON.stringify(message).length
     if (messageSize > this.options.messageSizeLimit) {
@@ -168,7 +171,6 @@ export class IpcMethodHandler extends EventEmitter {
     ...params: any[]
   ): Promise<IpcMethodResult<T>> {
     const messageId = randomHash()
-
     const results = Promise.all(
       targetProcesses.map(
         p =>
@@ -194,7 +196,8 @@ export class IpcMethodHandler extends EventEmitter {
           }),
       ),
     )
-    this.sendCall(action, targetProcesses, messageId, ...params)
+    const metadata = await IpcMetadataTransfer.createMetadata()
+    this.sendCall(action, targetProcesses, messageId, params, metadata)
     return new IpcMethodResult(await results)
   }
 
@@ -234,7 +237,7 @@ export class IpcMethodHandler extends EventEmitter {
           if (typeof this.receivers[message.ACTION] !== 'function') {
             throw new Error('METHOD_NOT_FOUND')
           }
-          value = await this.receivers[message.ACTION](...(message.PARAMS || []))
+          value = await IpcMetadataTransfer.callWithMetadata(message.TRANSFERRED_METADATA, () => this.receivers[message.ACTION](...(message.PARAMS || [])))
         } catch (e) {
           error = IpcErrorHandler.serializeError(e)
         }
